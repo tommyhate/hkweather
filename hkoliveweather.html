@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live HK Weather & Clock</title>
+    <style>
+        #weather-container {
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+            font-weight: bold; /* Entire line is bold */
+            color: #333;
+            background-color: #ffffff; /* Pure white background */
+            display: inline-block;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="weather-container">...</div>
+
+    <script>
+        let currentTemp = "--";
+        let currentHumidity = "--";
+
+        // Formats the live clock (HH:MM) and date in real-time
+        function getFormattedLiveDateTime() {
+            const now = new Date();
+            
+            // 1. Live Time (HH:MM)
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const timeStr = `${hours}:${minutes}`;
+
+            // 2. Live Date (Thur. Jun 18)
+            let weekday = now.toLocaleDateString('en-US', { weekday: 'short' });
+            if (weekday === "Thu") {
+                weekday = "Thur";
+            }
+            const month = now.toLocaleDateString('en-US', { month: 'short' });
+            const day = now.getDate();
+            const dateStr = `${weekday}. ${month} ${day}`;
+            
+            return `${timeStr} ${dateStr}`;
+        }
+
+        // Re-renders the entire line instantly
+        function updateDisplay() {
+            const liveDateTime = getFormattedLiveDateTime();
+            document.getElementById('weather-container').innerText = 
+                `${liveDateTime} | ${currentTemp}°C | ${currentHumidity}%`;
+        }
+
+        // Background API call to update weather data
+        async function getHKWeather() {
+            const apiUrl = 'https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=rhrread&lang=en';
+
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+
+                // Get Temperature for Hong Kong Observatory Main Station
+                const tempObj = data.temperature.data.find(item => item.place === "Hong Kong Observatory") 
+                                || data.temperature.data[0];
+                currentTemp = tempObj.value;
+
+                // Get Humidity
+                const humidityObj = data.humidity.data[0];
+                currentHumidity = humidityObj.value;
+
+                updateDisplay();
+
+            } catch (error) {
+                console.error("Live update error fetching weather data:", error);
+                updateDisplay(); 
+            }
+        }
+
+        // --- Live Execution Timers ---
+        
+        // Initial core run on load
+        getHKWeather(); 
+        updateDisplay();
+
+        // 1. Check and refresh the minute string every 1 second to keep it accurate
+        setInterval(updateDisplay, 1000);
+
+        // 2. Re-fetch weather conditions from HKO servers every 5 minutes (300000ms)
+        setInterval(getHKWeather, 300000);
+    </script>
+
+</body>
+</html>
